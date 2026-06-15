@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>은(Silver) 일목균형표 분석 & DCA 대시보드</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg:         #0d0f14;
+    --surface:    #141720;
+    --surface2:   #1c2030;
+    --border:     #252a3a;
+    --silver:     #c8d4e8;
+    --silver-dim: #7a8fa8;
+    --gold:       #d4a84b;
+    --green:      #3ecf8e;
+    --red:        #f06565;
+    --yellow:     #f5c842;
+    --blue:       #4a9eff;
+    --purple:     #9b72cf;
+    --text:       #e2e8f0;
+    --text-dim:   #8896a8;
+    --kumo-bull:  rgba(62,207,142,0.12);
+    --kumo-bear:  rgba(240,101,101,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0d0f14 0%, #141a2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px 16px;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--silver) 0%, var(--silver-dim) 100%);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-size: 15px; font-weight: 700; color: var(--silver); letter-spacing: 0.5px; }
+  .logo-sub  { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(62,207,142,0.1);
+    border: 1px solid rgba(62,207,142,0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px; color: var(--green); font-family: 'IBM Plex Mono', monospace;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    margin-top: 16px;
+  }
+  .tab {
+    padding: 8px 20px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active { color: var(--silver); border-bottom-color: var(--silver); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── Layout ── */
+  main { padding: 20px 24px 40px; max-width: 1280px; margin: 0 auto; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Price Hero ── */
+  .price-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:720px){ .price-hero{ grid-template-columns:1fr; } }
+
+  .price-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .price-card.main-price {
+    background: linear-gradient(135deg, #141720 0%, #1a2035 100%);
+    border-color: var(--silver-dim);
+  }
+  .price-label { font-size: 11px; color: var(--text-dim); font-family:'IBM Plex Mono',monospace; letter-spacing:1px; margin-bottom:6px; }
+  .price-value { font-size: 32px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:var(--silver); }
+  .price-value.large { font-size:40px; }
+  .price-sub { font-size: 12px; color:var(--text-dim); margin-top:4px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-family:'IBM Plex Mono',monospace; font-weight:600;
+    margin-top: 6px;
+  }
+  .badge.up   { background:rgba(62,207,142,0.15); color:var(--green); }
+  .badge.down { background:rgba(240,101,101,0.15); color:var(--red); }
+  .badge.neu  { background:rgba(200,212,232,0.1);  color:var(--silver-dim); }
+
+  /* ── Section titles ── */
+  .section-title {
+    font-size: 12px; font-weight:600; letter-spacing:1.5px;
+    color: var(--text-dim); text-transform:uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px; margin-bottom:16px; margin-top:24px;
+  }
+
+  /* ── Ichimoku Grid ── */
+  .ichimoku-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:860px){ .ichimoku-grid{ grid-template-columns:1fr; } }
+
+  .ichi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .ichi-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ichi-tf { font-size: 13px; font-weight:700; color:var(--text); }
+  .ichi-status {
+    font-size: 11px; font-weight:600; padding: 3px 10px; border-radius: 20px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .status-bull { background:rgba(62,207,142,0.15); color:var(--green); border:1px solid rgba(62,207,142,0.3); }
+  .status-bear { background:rgba(240,101,101,0.15); color:var(--red); border:1px solid rgba(240,101,101,0.3); }
+  .status-neu  { background:rgba(245,200,66,0.12); color:var(--yellow); border:1px solid rgba(245,200,66,0.3); }
+
+  .ichi-body { padding: 14px 16px; }
+
+  .ichi-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .ichi-row:last-child { border-bottom: none; }
+  .ichi-key { font-size: 12px; color:var(--text-dim); }
+  .ichi-val { font-size: 12px; font-family:'IBM Plex Mono',monospace; color:var(--text); }
+  .ichi-val.bull { color:var(--green); }
+  .ichi-val.bear { color:var(--red); }
+  .ichi-val.gold { color:var(--gold); }
+
+  .ichi-kumo {
+    margin: 10px 0 4px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .kumo-bull { background: var(--kumo-bull); border:1px solid rgba(62,207,142,0.2); color:var(--green); }
+  .kumo-bear { background: var(--kumo-bear); border:1px solid rgba(240,101,101,0.2); color:var(--red); }
+  .kumo-neu  { background: rgba(245,200,66,0.08); border:1px solid rgba(245,200,66,0.2); color:var(--yellow); }
+
+  .ichi-signal {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .ichi-signal strong { color: var(--text); }
+
+  /* ── Visual Cloud Chart ── */
+  .cloud-vis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .cloud-canvas { position: relative; height: 220px; overflow: hidden; border-radius: 6px; background: #0a0c12; }
+
+  /* ── Macro Signal Strips ── */
+  .macro-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:720px){ .macro-strip{ grid-template-columns:repeat(2,1fr); } }
+
+  .macro-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .macro-label { font-size: 10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  .macro-val   { font-size: 20px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+  .macro-desc  { font-size: 11px; color:var(--text-dim); margin-top:3px; }
+
+  /* ── Outlook Section ── */
+  .outlook-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:640px){ .outlook-grid{ grid-template-columns:1fr; } }
+
+  .outlook-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .outlook-title { font-size: 12px; font-weight:600; margin-bottom:10px; color:var(--text); }
+  .outlook-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px; color:var(--text-dim);
+  }
+  .outlook-item:last-child { border-bottom: none; }
+  .outlook-icon { font-size: 14px; line-height:1.3; flex-shrink:0; }
+
+  /* ── DCA PAGE ── */
+  .dca-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:720px){ .dca-overview{ grid-template-columns:1fr 1fr; } }
+
+  .signal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .signal-card::before {
+    content: '';
+    position: absolute; top:0; left:0; right:0; height:3px;
+  }
+  .signal-card.green::before  { background: var(--green); }
+  .signal-card.yellow::before { background: var(--yellow); }
+  .signal-card.red::before    { background: var(--red); }
+  .signal-card.blue::before   { background: var(--blue); }
+  .signal-card.purple::before { background: var(--purple); }
+  .signal-card.silver::before { background: var(--silver); }
+
+  .sig-name  { font-size:11px; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:6px; }
+  .sig-value { font-size:22px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+  .sig-sub   { font-size:11px; color:var(--text-dim); margin-top:3px; }
+
+  /* Signal meter bar */
+  .meter-wrap { margin-top:8px; }
+  .meter-label { display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-bottom:3px; }
+  .meter-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .meter-fill { height:100%; border-radius:2px; transition: width 0.6s ease; }
+  .fill-green  { background: var(--green); }
+  .fill-yellow { background: var(--yellow); }
+  .fill-red    { background: var(--red); }
+  .fill-blue   { background: var(--blue); }
+
+  /* ── DCA Score ── */
+  .dca-score-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+  @media(max-width:600px){ .dca-score-section{ grid-template-columns:1fr; } }
+
+  .score-ring {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .score-ring svg { position:absolute; top:0; left:0; }
+  .score-inner { position:relative; z-index:1; text-align:center; }
+  .score-num  { font-size:32px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+  .score-max  { font-size:13px; color:var(--text-dim); }
+
+  .score-details { }
+  .score-verdict { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .score-desc    { font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:12px; }
+  .score-range   {
+    display:inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius:6px;
+    padding: 6px 16px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    font-weight:600;
+  }
+
+  /* ── Signal Checklist ── */
+  .checklist {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .check-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .check-row:last-child { border-bottom:none; }
+  .check-icon { font-size:16px; }
+  .check-name { font-size:13px; font-weight:500; }
+  .check-detail { font-size:11px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; }
+  .check-badge {
+    font-size:10px; font-weight:700;
+    padding: 2px 8px; border-radius:4px;
+    font-family:'IBM Plex Mono',monospace;
+    white-space:nowrap;
+  }
+  .cb-pass { background:rgba(62,207,142,0.15); color:var(--green); }
+  .cb-warn { background:rgba(245,200,66,0.12); color:var(--yellow); }
+  .cb-fail { background:rgba(240,101,101,0.12); color:var(--red); }
+  .cb-wait { background:rgba(200,212,232,0.08); color:var(--silver-dim); }
+
+  /* ── DCA Table ── */
+  .dca-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  table { width:100%; border-collapse:collapse; }
+  th {
+    background: var(--surface2);
+    font-size:10px; font-weight:600; letter-spacing:1px;
+    color:var(--text-dim); text-transform:uppercase;
+    padding: 10px 14px; text-align:left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    font-size:12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .td-label { font-family:'Noto Sans KR',sans-serif; font-size:12px; color:var(--text); }
+  .td-green { color:var(--green); font-weight:600; }
+  .td-yellow{ color:var(--yellow); font-weight:600; }
+  .td-red   { color:var(--red); font-weight:600; }
+  .td-silver{ color:var(--silver); font-weight:600; }
+
+  /* ── Gold progress ── */
+  .gold-progress-card {
+    background: linear-gradient(135deg, #1a1600 0%, #1a1a00 50%, #141600 100%);
+    border: 1px solid rgba(212,168,75,0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 20px; flex-wrap:wrap;
+  }
+  .gp-label { font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+  .gp-val   { font-size:28px; font-weight:700; font-family:'IBM Plex Mono',monospace; color:var(--gold); }
+  .gp-bar-wrap { flex:1; min-width:160px; }
+  .gp-bar { height:12px; background:#2a2000; border-radius:6px; overflow:hidden; margin:6px 0; }
+  .gp-fill { height:100%; border-radius:6px; background: linear-gradient(90deg, #c8840a, #f5c842); transition: width 0.8s ease; }
+  .gp-marks { display:flex; justify-content:space-between; font-size:10px; color:var(--gold); }
+  .gp-note  { font-size:12px; color:rgba(212,168,75,0.7); margin-top:4px; }
+
+  /* ── Ichimoku mini bars ── */
+  .ichi-bars { display:flex; gap:4px; margin-top:8px; }
+  .ichi-bar {
+    height: 20px; flex:1; border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:700;
+  }
+  .bar-bull { background:rgba(62,207,142,0.25); color:var(--green); }
+  .bar-bear { background:rgba(240,101,101,0.2); color:var(--red); }
+  .bar-neu  { background:rgba(245,200,66,0.15); color:var(--yellow); }
+
+  /* ── Disclaimer ── */
+  .disclaimer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius:8px;
+    padding:12px 16px;
+    font-size:11px; color:var(--text-dim);
+    margin-top:24px; line-height:1.6;
+  }
+
+  /* ── Tooltip ── */
+  .tip {
+    display:inline-block;
+    width:14px; height:14px; border-radius:50%;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    font-size:10px; text-align:center; line-height:14px;
+    color:var(--text-dim); cursor:help; margin-left:4px;
+    vertical-align:middle;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* gauge for score ring */
+  .ring-track { fill:none; stroke:#252a3a; stroke-width:10; }
+  .ring-fill  { fill:none; stroke-width:10; stroke-linecap:round; transition: stroke-dashoffset 1s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">🥈</div>
+      <div>
+        <div class="logo-text">SILVER COMPASS</div>
+        <div class="logo-sub">은 일목균형표 분석 · DCA 매수 신호 시스템</div>
+      </div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span id="lastUpdate">–</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('analysis')">📊 일목균형표 분석</div>
+    <div class="tab" onclick="switchTab('dca')">🎯 DCA 매수 대시보드</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════════════ -->
+<!--  PAGE 1 : ICHIMOKU ANALYSIS                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-analysis" class="page active">
+
+  <!-- Price Hero -->
+  <div class="price-hero">
+    <div class="price-card main-price">
+      <div class="price-label">XAG/USD · 현재가</div>
+      <div class="price-value large" id="spotPrice">$68.09</div>
+      <div class="badge down" id="spotChange">▼ -22.5% (1개월)</div>
+      <div class="price-sub">52주 범위: $35.28 – $121.67</div>
+    </div>
+    <div class="price-card">
+      <div class="price-label">금/은 비율 (GSR)</div>
+      <div class="price-value" id="gsrValue">≈ 59</div>
+      <div class="badge neu" id="gsrBadge">역사 평균 65~70 · 현재 ≈ 59</div>
+      <div class="price-sub">ATH: $121.67 (2026.01.29)</div>
+    </div>
+    <div class="price-card">
+      <div class="price-label">1Q 실버액티브 (KRX)</div>
+      <div class="price-value" id="krxSilver">–</div>
+      <div class="badge neu">USD/KRW × XAG 반영</div>
+      <div class="price-sub">ISA 편입 대상 ETF</div>
+    </div>
+  </div>
+
+  <!-- 3-TF Visual Summary -->
+  <div class="section-title">일목균형표 3중 시간대 구름 위치</div>
+
+  <div class="cloud-vis">
+    <canvas id="kumoCanvas" style="width:100%;height:220px;display:block;border-radius:6px;"></canvas>
+  </div>
+
+  <!-- Ichimoku Cards -->
+  <div class="section-title">시간대별 일목균형표 상세 분석</div>
+
+  <div class="ichimoku-grid">
+
+    <!-- DAILY -->
+    <div class="ichi-card">
+      <div class="ichi-header">
+        <span class="ichi-tf">일봉 (Daily)</span>
+        <span class="ichi-status status-bear">음세 조정중</span>
+      </div>
+      <div class="ichi-body">
+        <div class="ichi-row"><span class="ichi-key">현재가</span><span class="ichi-val">$68.09</span></div>
+        <div class="ichi-row"><span class="ichi-key">전환선 (Tenkan, 9)</span><span class="ichi-val bear">≈ $72–74</span></div>
+        <div class="ichi-row"><span class="ichi-key">기준선 (Kijun, 26)</span><span class="ichi-val bear">≈ $80–81</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬A (SSA)</span><span class="ichi-val bear">≈ $88–90</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬B (SSB)</span><span class="ichi-val bear">≈ $78–80</span></div>
+        <div class="ichi-row"><span class="ichi-key">후행스팬 (Chikou)</span><span class="ichi-val bear">구름 아래</span></div>
+        <div class="ichi-kumo kumo-bear">☁️ 가격이 구름 <strong>하방</strong> — 강한 하락 구조</div>
+        <div class="ichi-bars">
+          <div class="ichi-bar bar-bear">가격</div>
+          <div class="ichi-bar bar-bear">후행</div>
+          <div class="ichi-bar bar-bear">전환</div>
+          <div class="ichi-bar bar-bear">기준</div>
+          <div class="ichi-bar bar-bear">구름</div>
+        </div>
+        <div class="ichi-signal">
+          <strong>🔴 5중 하락 신호 동시 성립</strong><br>
+          전환선·기준선·구름 모두 현재가 상방. ATH $121.67(1월) 대비 현재 -44% 급락. 기준선 $80~81이 첫 회복 관문. <strong>단기 추가 하락 가능성 유효</strong>, 지지 탐색 구간.
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY -->
+    <div class="ichi-card">
+      <div class="ichi-header">
+        <span class="ichi-tf">주봉 (Weekly)</span>
+        <span class="ichi-status status-neu">조정 → 반등 탐색</span>
+      </div>
+      <div class="ichi-body">
+        <div class="ichi-row"><span class="ichi-key">현재가</span><span class="ichi-val">$68.09</span></div>
+        <div class="ichi-row"><span class="ichi-key">전환선 (9주)</span><span class="ichi-val bear">≈ $76–80</span></div>
+        <div class="ichi-row"><span class="ichi-key">기준선 (26주)</span><span class="ichi-val bear">≈ $90–95</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬A</span><span class="ichi-val gold">≈ $65–70 (구름 하단)</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬B</span><span class="ichi-val gold">≈ $50–55 (구름 하단)</span></div>
+        <div class="ichi-row"><span class="ichi-key">후행스팬</span><span class="ichi-val bull">구름 상방 근접</span></div>
+        <div class="ichi-kumo kumo-neu">☁️ 구름 <strong>내부 또는 하단 접촉</strong> — 중요 지지 테스트 중</div>
+        <div class="ichi-bars">
+          <div class="ichi-bar bar-bear">가격</div>
+          <div class="ichi-bar bar-bull">후행</div>
+          <div class="ichi-bar bar-bear">전환</div>
+          <div class="ichi-bar bar-bear">기준</div>
+          <div class="ichi-bar bar-neu">구름</div>
+        </div>
+        <div class="ichi-signal">
+          <strong>🟡 구름 지지 테스트 — 핵심 분기점</strong><br>
+          주봉 구름(SSB ≈$50~55)은 역사적 강력 지지대. 52주 저점 $35.28 이후 쌓인 구름이 현재 $65~70 수준. 구름 내부 안착 → 반등 조건 형성 가능. 200일 MA $74.73 수복이 중기 회복 신호.
+        </div>
+      </div>
+    </div>
+
+    <!-- MONTHLY -->
+    <div class="ichi-card">
+      <div class="ichi-header">
+        <span class="ichi-tf">월봉 (Monthly)</span>
+        <span class="ichi-status status-bull">장기 구조적 강세</span>
+      </div>
+      <div class="ichi-body">
+        <div class="ichi-row"><span class="ichi-key">현재가</span><span class="ichi-val">$68.09</span></div>
+        <div class="ichi-row"><span class="ichi-key">전환선 (9월)</span><span class="ichi-val bull">≈ $65–70</span></div>
+        <div class="ichi-row"><span class="ichi-key">기준선 (26월)</span><span class="ichi-val bear">≈ $38–42</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬A</span><span class="ichi-val bull">≈ $50–60 (구름 상단)</span></div>
+        <div class="ichi-row"><span class="ichi-key">선행스팬B</span><span class="ichi-val bull">≈ $30–35 (구름 하단)</span></div>
+        <div class="ichi-row"><span class="ichi-key">후행스팬</span><span class="ichi-val bull">구름 상방 유지</span></div>
+        <div class="ichi-kumo kumo-bull">☁️ 가격이 구름 <strong>상방</strong> — 장기 상승 구조 유효</div>
+        <div class="ichi-bars">
+          <div class="ichi-bar bar-bull">가격</div>
+          <div class="ichi-bar bar-bull">후행</div>
+          <div class="ichi-bar bar-bull">전환</div>
+          <div class="ichi-bar bar-bull">기준</div>
+          <div class="ichi-bar bar-bull">구름</div>
+        </div>
+        <div class="ichi-signal">
+          <strong>🟢 월봉 5중 호전 — 구조적 상승 사이클</strong><br>
+          2025년 $50 돌파(40년 저항 컵앤핸들 완성) 이후 월봉 구조 전환. 현재 조정은 <strong>구름 상방에서의 건강한 되돌림</strong>. 장기 목표 $100+ 유효. 기준선 $38~42가 최후 지지선.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Macro Context -->
+  <div class="section-title">매크로 환경 지표</div>
+  <div class="macro-strip">
+    <div class="macro-card">
+      <div class="macro-label">XAG 52주 등락</div>
+      <div class="macro-val" style="color:var(--green)">+79%</div>
+      <div class="macro-desc">$35.28 → $121.67 → $68</div>
+    </div>
+    <div class="macro-card">
+      <div class="macro-label">ATH 대비 조정</div>
+      <div class="macro-val" style="color:var(--red)">-44%</div>
+      <div class="macro-desc">$121.67 (1월) → $68</div>
+    </div>
+    <div class="macro-card">
+      <div class="macro-label">금/은 비율 (GSR)</div>
+      <div class="macro-val" style="color:var(--yellow)">≈59</div>
+      <div class="macro-desc">역사 평균 65~70 하회</div>
+    </div>
+    <div class="macro-card">
+      <div class="macro-label">연속 주간 하락</div>
+      <div class="macro-val" style="color:var(--red)">5주</div>
+      <div class="macro-desc">NFP쇼크·이란전쟁 영향</div>
+    </div>
+  </div>
+
+  <!-- Outlook -->
+  <div class="section-title">시나리오 전망</div>
+  <div class="outlook-grid">
+    <div class="outlook-card">
+      <div class="outlook-title" style="color:var(--green)">🟢 반등 시나리오 (기본)</div>
+      <div class="outlook-item"><span class="outlook-icon">1️⃣</span><span>이란-미국 평화협정 타결 → 에너지 인플레 완화 → 금리인상 우려 해소</span></div>
+      <div class="outlook-item"><span class="outlook-icon">2️⃣</span><span>주봉 구름 하단($65~70) 지지 확인 후 기술적 반등</span></div>
+      <div class="outlook-item"><span class="outlook-icon">3️⃣</span><span>AI·데이터센터 산업수요 지속 + SHFE 재고 사상최저 → 공급 타이트</span></div>
+      <div class="outlook-item"><span class="outlook-icon">4️⃣</span><span>월봉 구조 유지 → 중기 $80~100 회복 목표</span></div>
+    </div>
+    <div class="outlook-card">
+      <div class="outlook-title" style="color:var(--red)">🔴 추가 하락 리스크</div>
+      <div class="outlook-item"><span class="outlook-icon">⚡</span><span>ECB 금리 인상(2026.06 결행) + Fed 추가 인상 기대 → 달러 강세 지속</span></div>
+      <div class="outlook-item"><span class="outlook-icon">⚡</span><span>주봉 구름 하단 $65 하방 이탈 → 다음 지지 $55~58</span></div>
+      <div class="outlook-item"><span class="outlook-icon">⚡</span><span>HSBC "은 펀더멘털 과대평가" 경고 (5월) → 기관 매도</span></div>
+      <div class="outlook-item"><span class="outlook-icon">⚡</span><span>월봉 기준선 $38~42 이탈시 장기 구조 붕괴</span></div>
+    </div>
+  </div>
+
+  <div class="outlook-card" style="margin-bottom:20px;">
+    <div class="outlook-title">🎯 코디의 바벨 전략 포지셔닝</div>
+    <div class="outlook-item"><span class="outlook-icon">💡</span><span><strong>현재 은 미편입 상태</strong> — 금 목표 90% 달성 이후 매수 예정 (현행 전략 유지 권장)</span></div>
+    <div class="outlook-item"><span class="outlook-icon">📐</span><span>월봉 구조적 강세 + 주봉 구름 지지 테스트 중 → <strong>분할 DCA 최적 국면</strong> 진행 중</span></div>
+    <div class="outlook-item"><span class="outlook-icon">📊</span><span>GSR ≈59 (역사 평균 하회) → 금 대비 은이 아직 저평가 아님. 금 먼저 확충 전략 타당</span></div>
+    <div class="outlook-item"><span class="outlook-icon">🕐</span><span>은 매수 적기: 금 90% 완성 후 + 일봉 기준선(Kijun) 상방 회복 확인 시점</span></div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ 본 분석은 2026.06 기준 공개 데이터 기반 참고용입니다. 일목균형표 수치는 실시간 차트 확인 필요. 투자 판단은 본인 책임.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!--  PAGE 2 : DCA DASHBOARD                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="page-dca" class="page">
+
+  <!-- Gold Progress Gate -->
+  <div class="gold-progress-card">
+    <div>
+      <div class="gp-label">🏅 금 목표 진척도 (편입 선행 조건)</div>
+      <div class="gp-val" id="goldPct">75%</div>
+      <div class="gp-note">90% 달성 시 은 DCA 개시 가능</div>
+    </div>
+    <div class="gp-bar-wrap">
+      <div class="gp-bar"><div class="gp-fill" id="goldBar" style="width:75%"></div></div>
+      <div class="gp-marks">
+        <span>0%</span>
+        <span style="color:var(--yellow);font-weight:700">🎯 90% 개시선</span>
+        <span>100%</span>
+      </div>
+    </div>
+    <div>
+      <div class="gp-label">은 편입 상태</div>
+      <div style="font-size:20px;font-weight:700;color:var(--silver-dim)" id="silverStatus">🔒 대기중</div>
+      <div class="gp-note" id="goldGate">금 90% 도달 후 활성화</div>
+    </div>
+  </div>
+
+  <!-- DCA Score Ring -->
+  <div class="dca-score-section" id="dcaScoreSection">
+    <div class="score-ring">
+      <svg viewBox="0 0 120 120" width="120" height="120">
+        <circle class="ring-track" cx="60" cy="60" r="50"/>
+        <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50"
+          stroke="#c8d4e8"
+          stroke-dasharray="314"
+          stroke-dashoffset="314"
+          transform="rotate(-90 60 60)"/>
+      </svg>
+      <div class="score-inner">
+        <div class="score-num" id="scoreNum">–</div>
+        <div class="score-max">/100</div>
+      </div>
+    </div>
+    <div class="score-details">
+      <div class="score-verdict" id="scoreVerdict">금 90% 완료 후 활성화</div>
+      <div class="score-desc" id="scoreDesc">은 DCA 대시보드는 금 목표 비중 90% 도달 이후 자동 활성화됩니다. 아래 지표들은 사전 모니터링용입니다.</div>
+      <div class="score-range" id="scoreRange">DCA 추천 범위: 활성화 대기</div>
+    </div>
+  </div>
+
+  <!-- Signal Cards -->
+  <div class="section-title">DCA 신호 지표 (사전 모니터링)</div>
+  <div class="dca-overview">
+
+    <div class="signal-card silver">
+      <div class="sig-name">XAG/USD 현재가</div>
+      <div class="sig-value" style="color:var(--silver)" id="dcaSpot">$68.09</div>
+      <div class="sig-sub">52주 중간값 기준</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>저점$35</span><span id="dcaSpotPct">–</span><span>고점$121</span></div>
+        <div class="meter-bar"><div class="meter-fill fill-yellow" id="dcaSpotBar" style="width:38%"></div></div>
+      </div>
+    </div>
+
+    <div class="signal-card blue">
+      <div class="sig-name">USD/KRW 환율</div>
+      <div class="sig-value" style="color:var(--blue)" id="usdkrw">1,380</div>
+      <div class="sig-sub">기준선: 1,500 KRW</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>강달러</span><span id="usdkrwStatus">–</span><span>약달러</span></div>
+        <div class="meter-bar"><div class="meter-fill fill-blue" id="usdkrwBar" style="width:55%"></div></div>
+      </div>
+    </div>
+
+    <div class="signal-card green">
+      <div class="sig-name">GSR (금/은 비율)</div>
+      <div class="sig-value" style="color:var(--green)" id="dcaGsr">≈ 59</div>
+      <div class="sig-sub">80+ : 은 매력적 / 40↓ : 과열</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>과열(40)</span><span id="gsrStatus">–</span><span>저평가(100)</span></div>
+        <div class="meter-bar"><div class="meter-fill fill-green" id="gsrBar" style="width:32%"></div></div>
+      </div>
+    </div>
+
+    <div class="signal-card yellow">
+      <div class="sig-name">일봉 기준선 (Kijun)</div>
+      <div class="sig-value" style="color:var(--yellow)">$80–81</div>
+      <div class="sig-sub">현재가 하방 → 하락 구조</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>매수압력</span><span>68/81</span><span>기준선</span></div>
+        <div class="meter-bar"><div class="meter-fill fill-yellow" style="width:84%"></div></div>
+      </div>
+    </div>
+
+    <div class="signal-card purple">
+      <div class="sig-name">주봉 구름 지지</div>
+      <div class="sig-value" style="color:var(--purple)">$65–70</div>
+      <div class="sig-sub">현재 구름 하단 접촉</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>구름하단</span><span>68/$65</span><span>구름상단</span></div>
+        <div class="meter-bar"><div class="meter-fill" style="width:45%;background:var(--purple)"></div></div>
+      </div>
+    </div>
+
+    <div class="signal-card red">
+      <div class="sig-name">ATH 대비 조정폭</div>
+      <div class="sig-value" style="color:var(--red)">-44%</div>
+      <div class="sig-sub">$121.67 → $68 (5월 이후 조정)</div>
+      <div class="meter-wrap">
+        <div class="meter-label"><span>0%</span><span>조정강도</span><span>-60%</span></div>
+        <div class="meter-bar"><div class="meter-fill fill-red" style="width:73%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DCA Signal Checklist -->
+  <div class="section-title">은 DCA 매수 체크리스트</div>
+  <div class="checklist">
+    <div class="check-row" style="background:var(--surface2)">
+      <div></div>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:600">조건</div>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:600;text-align:right">현재값</div>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:600">판정</div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">🏅</div>
+      <div>
+        <div class="check-name">선행 조건: 금 편입 90% 이상</div>
+        <div style="font-size:11px;color:var(--text-dim)">바벨 전략 우선순위 — 금 확충 후 은 개시</div>
+      </div>
+      <div class="check-detail">75% (추정)</div>
+      <div><span class="check-badge cb-wait" id="check1">🔒 대기</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">📊</div>
+      <div>
+        <div class="check-name">일봉 기준선(Kijun) 상방 돌파</div>
+        <div style="font-size:11px;color:var(--text-dim)">$80~81 상향 돌파 → 단기 추세 전환 신호</div>
+      </div>
+      <div class="check-detail">$68 vs $81</div>
+      <div><span class="check-badge cb-fail">❌ 미달</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">☁️</div>
+      <div>
+        <div class="check-name">주봉 구름 하단($65~70) 이탈 없이 지지</div>
+        <div style="font-size:11px;color:var(--text-dim)">구름 내부 안착 또는 상향 돌파 확인</div>
+      </div>
+      <div class="check-detail">$68 접촉중</div>
+      <div><span class="check-badge cb-warn">⚠️ 테스트중</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">📉</div>
+      <div>
+        <div class="check-name">XAG 52주 중간값 이하</div>
+        <div style="font-size:11px;color:var(--text-dim)">중간값 ≈ $78.5 ($35.28+$121.67)/2 이하 → DCA 유리</div>
+      </div>
+      <div class="check-detail">$68 vs $78.5</div>
+      <div><span class="check-badge cb-pass">✅ 충족</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">💱</div>
+      <div>
+        <div class="check-name">USD/KRW 환율 1,500 이상</div>
+        <div style="font-size:11px;color:var(--text-dim)">고환율 → 달러자산 KRW 환산 이득. 바벨 기준선</div>
+      </div>
+      <div class="check-detail">≈ 1,380 KRW</div>
+      <div><span class="check-badge cb-fail">❌ 미달</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">⚖️</div>
+      <div>
+        <div class="check-name">금/은 비율(GSR) 80 이상</div>
+        <div style="font-size:11px;color:var(--text-dim)">GSR ≥ 80 → 금 대비 은 역사적 저평가 구간</div>
+      </div>
+      <div class="check-detail">GSR ≈ 59</div>
+      <div><span class="check-badge cb-fail">❌ 미달</span></div>
+    </div>
+
+    <div class="check-row">
+      <div class="check-icon">🏭</div>
+      <div>
+        <div class="check-name">월봉 구조적 상승 유지</div>
+        <div style="font-size:11px;color:var(--text-dim)">월봉 가격 > 구름 상방 유지 (장기 매수 근거)</div>
+      </div>
+      <div class="check-detail">월봉 구름 상방 ✓</div>
+      <div><span class="check-badge cb-pass">✅ 충족</span></div>
+    </div>
+  </div>
+
+  <!-- DCA Ranges Table -->
+  <div class="section-title">시나리오별 은 DCA 매수 기준</div>
+  <div class="dca-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>시나리오</th>
+          <th>XAG/USD 구간</th>
+          <th>USD/KRW 가정</th>
+          <th>KRX 환산 (g당)</th>
+          <th>매수 강도</th>
+          <th>조건</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-label">🔥 적극 매수</td>
+          <td class="td-green">$55 이하</td>
+          <td>1,380</td>
+          <td class="td-green">≈ 2,450원/g</td>
+          <td class="td-green">3× 기본</td>
+          <td class="td-label">주봉구름 하방이탈 + GSR 80+</td>
+        </tr>
+        <tr>
+          <td class="td-label">📈 표준 매수</td>
+          <td class="td-yellow">$60–70</td>
+          <td>1,380</td>
+          <td class="td-yellow">≈ 2,680–3,120원/g</td>
+          <td class="td-yellow">1× 기본</td>
+          <td class="td-label">현재 구간 (금 90% 후)</td>
+        </tr>
+        <tr>
+          <td class="td-label">📊 소량 DCA</td>
+          <td>$70–85</td>
+          <td>1,380</td>
+          <td>≈ 3,120–3,790원/g</td>
+          <td style="color:var(--text-dim)">0.5× 기본</td>
+          <td class="td-label">일봉 Kijun 회복 확인 후</td>
+        </tr>
+        <tr>
+          <td class="td-label">🚫 매수 보류</td>
+          <td class="td-red">$85 초과</td>
+          <td>–</td>
+          <td class="td-red">≈ 3,790원/g+</td>
+          <td class="td-red">0 (대기)</td>
+          <td class="td-label">고점 추격 금지 · 조정 대기</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Input Controls -->
+  <div class="section-title">직접 입력 — DCA 계산기</div>
+  <div class="price-card" style="margin-bottom:16px;background:var(--surface);border-radius:10px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:end;flex-wrap:wrap;">
+      <div>
+        <div class="price-label">금 편입률 (%)</div>
+        <input type="range" min="0" max="100" value="75" id="goldPctSlider"
+          style="width:100%;accent-color:var(--gold);margin:8px 0;"
+          oninput="updateCalc()">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;color:var(--gold)" id="goldPctDisplay">75%</div>
+      </div>
+      <div>
+        <div class="price-label">XAG/USD ($)</div>
+        <input type="number" value="68.09" id="xagInput" step="0.1"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:16px;width:100%;"
+          oninput="updateCalc()">
+      </div>
+      <div>
+        <div class="price-label">USD/KRW</div>
+        <input type="number" value="1380" id="usdkrwInput" step="1"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:16px;width:100%;"
+          oninput="updateCalc()">
+      </div>
+    </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+      <div>
+        <div class="price-label">트로이oz → g 환산가 (KRW)</div>
+        <div style="font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--silver)" id="calcKrw">–</div>
+      </div>
+      <div>
+        <div class="price-label">DCA 권장 구간</div>
+        <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--yellow)" id="calcRange">–</div>
+      </div>
+      <div>
+        <div class="price-label">종합 신호</div>
+        <div style="font-size:16px;font-weight:700;" id="calcSignal">–</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ 은 DCA는 금 편입 90% 이상 달성 후 개시 권장 (바벨 전략 우선순위). 1Q 실버액티브 ETF는 ISA에서 매수. KRX 환산가는 트로이온스→그램 변환(×0.03215) 후 환율 적용. 실제 매수가는 프리미엄·스프레드 포함 확인.
+  </div>
+
+</div><!-- /page-dca -->
+</main>
+
+<script>
+// ── Tab switching ──
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['analysis','dca'][i]===id));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+id));
+}
+
+// ── Update timestamp ──
+function setTimestamp() {
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent =
+    now.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'}) + ' ' +
+    now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+}
+setTimestamp();
+
+// ── Score ring animation ──
+function animateRing(score) {
+  const r = 50, circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - score / 100);
+  const fill = document.getElementById('ringFill');
+  if (!fill) return;
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 200);
+  // color by score
+  fill.style.stroke = score >= 60 ? '#3ecf8e' : score >= 35 ? '#f5c842' : '#c8d4e8';
+}
+
+// ── DCA Calc ──
+function updateCalc() {
+  const goldPct  = parseFloat(document.getElementById('goldPctSlider').value);
+  const xag      = parseFloat(document.getElementById('xagInput').value) || 68.09;
+  const usdkrw   = parseFloat(document.getElementById('usdkrwInput').value) || 1380;
+
+  document.getElementById('goldPctDisplay').textContent = goldPct + '%';
+  document.getElementById('goldPct').textContent = goldPct + '%';
+  document.getElementById('goldBar').style.width = goldPct + '%';
+
+  // g당 KRW (1 troy oz = 31.1035g)
+  const krwPerG = (xag / 31.1035) * usdkrw;
+  document.getElementById('calcKrw').textContent = Math.round(krwPerG).toLocaleString() + '원/g';
+
+  // DCA range ±10%
+  const lo = Math.round(krwPerG * 0.93).toLocaleString();
+  const hi = Math.round(krwPerG * 1.07).toLocaleString();
+  document.getElementById('calcRange').textContent = lo + '–' + hi + '원/g';
+
+  // Gate
+  const gateOpen = goldPct >= 90;
+  document.getElementById('silverStatus').textContent = gateOpen ? '🟢 활성화' : '🔒 대기중';
+  document.getElementById('silverStatus').style.color = gateOpen ? '#3ecf8e' : '#7a8fa8';
+  document.getElementById('goldGate').textContent = gateOpen ? '✅ DCA 개시 가능' : '금 90% 도달 후 활성화';
+
+  // Score calculation
+  let score = 0;
+  if (gateOpen)         score += 30;
+  if (xag < 78.5)       score += 20; // below 52w midpoint
+  if (xag < 70)         score += 10; // below weekly cloud
+  if (usdkrw >= 1500)   score += 15; // high USD
+  if (xag < 55)         score += 10; // deep pullback
+  // GSR bonus (static)
+  const gsr = 4020 / xag; // approx XAU ~$4,020 (2026.06 기준)
+  if (gsr >= 80)         score += 15;
+  else if (gsr >= 65)    score += 8;
+
+  document.getElementById('scoreNum').textContent = score;
+  animateRing(score);
+
+  let verdict, desc, color;
+  if (!gateOpen) {
+    verdict = '금 90% 완료 후 활성화';
+    desc = '금 편입 목표를 먼저 달성하세요. 현재 은 지표 사전 모니터링 상태.';
+    color = 'var(--silver-dim)';
+  } else if (score >= 65) {
+    verdict = '🟢 적극 매수 적기';
+    desc = '복수 신호 동시 충족. 분할 DCA 강력 권장.';
+    color = '#3ecf8e';
+  } else if (score >= 40) {
+    verdict = '🟡 표준 DCA 구간';
+    desc = '일부 조건 미충족. 정기 소량 분할 매수 적합.';
+    color = '#f5c842';
+  } else {
+    verdict = '⚪ 관망 / 소량만';
+    desc = '주요 신호 미충족 다수. 금 확충 우선, 은은 모니터링.';
+    color = '#c8d4e8';
+  }
+
+  document.getElementById('scoreVerdict').textContent = verdict;
+  document.getElementById('scoreVerdict').style.color = color;
+  document.getElementById('scoreDesc').textContent = desc;
+
+  const rangeStr = gateOpen
+    ? `DCA 추천 구간: ${lo}–${hi} 원/g`
+    : 'DCA 추천 범위: 활성화 대기';
+  document.getElementById('scoreRange').textContent = rangeStr;
+
+  // Signal label
+  let signalHtml;
+  if (!gateOpen)       signalHtml = `<span style="color:var(--silver-dim)">🔒 대기</span>`;
+  else if (score>=65)  signalHtml = `<span style="color:var(--green)">✅ 매수</span>`;
+  else if (score>=40)  signalHtml = `<span style="color:var(--yellow)">⚠️ 부분</span>`;
+  else                 signalHtml = `<span style="color:var(--red)">⏸ 보류</span>`;
+  document.getElementById('calcSignal').innerHTML = signalHtml;
+
+  // check1 badge
+  document.getElementById('check1').textContent  = gateOpen ? '✅ 충족' : '🔒 대기';
+  document.getElementById('check1').className     = 'check-badge ' + (gateOpen ? 'cb-pass' : 'cb-wait');
+
+  // Update spot pct
+  const pct52 = Math.round(((xag - 35.28) / (121.67 - 35.28)) * 100);
+  document.getElementById('dcaSpot').textContent = '$' + xag.toFixed(2);
+  document.getElementById('dcaSpotPct').textContent = pct52 + '%';
+  document.getElementById('dcaSpotBar').style.width = pct52 + '%';
+  document.getElementById('dcaSpotBar').className = 'meter-fill ' +
+    (pct52 < 40 ? 'fill-green' : pct52 < 65 ? 'fill-yellow' : 'fill-red');
+
+  // USD/KRW bar
+  const krwPct = Math.min(100, Math.round((usdkrw - 1200) / (1700 - 1200) * 100));
+  document.getElementById('usdkrwBar').style.width = krwPct + '%';
+  document.getElementById('usdkrwStatus').textContent = usdkrw >= 1500 ? '✅ 유리' : usdkrw >= 1380 ? '보통' : '불리';
+
+  // GSR
+  const gsrVal = Math.round(gsr * 10) / 10;
+  document.getElementById('dcaGsr').textContent = '≈ ' + Math.round(gsrVal);
+  document.getElementById('gsrValue').textContent = '≈ ' + Math.round(gsrVal);
+  const gsrPct = Math.min(100, Math.round((gsrVal - 40) / (100 - 40) * 100));
+  document.getElementById('gsrBar').style.width = gsrPct + '%';
+  document.getElementById('gsrStatus').textContent = gsrVal >= 80 ? '✅ 유리' : gsrVal >= 65 ? '중립' : '불리';
+  document.getElementById('gsrBadge').textContent = '역사 평균 65~70 · 현재 ≈ ' + Math.round(gsrVal);
+}
+
+// ── Kumo Canvas ──
+function drawKumo() {
+  const canvas = document.getElementById('kumoCanvas');
+  if (!canvas) return;
+
+  // Use CSS size for HiDPI
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = 220 * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const W = rect.width, H = 220;
+  const pad = { t: 30, b: 40, l: 60, r: 20 };
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
+  // Approximate data points for 3 timeframes (simplified visual)
+  // Monthly: price ABOVE cloud (bullish)
+  // Weekly: price IN/AT cloud (neutral)
+  // Daily: price BELOW cloud (bearish)
+
+  const tfs = [
+    { label: '일봉', x: 0.15,  price: 68,  ssA: 89,  ssB: 79,  tenkan: 73,  kijun: 81,  color: '#f06565', bullish: false },
+    { label: '주봉', x: 0.50,  price: 68,  ssA: 72,  ssB: 57,  tenkan: 78,  kijun: 92,  color: '#f5c842', bullish: null },
+    { label: '월봉', x: 0.85,  price: 68,  ssA: 58,  ssB: 33,  tenkan: 68,  kijun: 40,  color: '#3ecf8e', bullish: true  },
+  ];
+
+  // Price scale: 20–130
+  const minP = 20, maxP = 130;
+  const toY = v => pad.t + cH * (1 - (v - minP) / (maxP - minP));
+
+  // Grid
+  ctx.strokeStyle = '#252a3a';
+  ctx.lineWidth = 0.5;
+  [30,50,70,90,110].forEach(v => {
+    ctx.beginPath();
+    ctx.moveTo(pad.l, toY(v));
+    ctx.lineTo(W - pad.r, toY(v));
+    ctx.stroke();
+    ctx.fillStyle = '#5a6a7a';
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.fillText('$' + v, 4, toY(v) + 4);
+  });
+
+  // Draw each TF column
+  const colW = cW * 0.22;
+  tfs.forEach(tf => {
+    const cx = pad.l + tf.x * cW;
+    const x1 = cx - colW / 2, x2 = cx + colW / 2;
+
+    // Kumo fill
+    const yA = toY(tf.ssA), yB = toY(tf.ssB);
+    const yTop = Math.min(yA, yB), yBot = Math.max(yA, yB);
+    ctx.fillStyle = tf.bullish === true  ? 'rgba(62,207,142,0.2)'
+                  : tf.bullish === false ? 'rgba(240,101,101,0.18)'
+                  : 'rgba(245,200,66,0.14)';
+    ctx.fillRect(x1, yTop, x2 - x1, yBot - yTop);
+    ctx.strokeStyle = tf.color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x1, yTop, x2 - x1, yBot - yTop);
+
+    // SSA line
+    ctx.strokeStyle = '#3ecf8e';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3,2]);
+    ctx.beginPath(); ctx.moveTo(x1, toY(tf.ssA)); ctx.lineTo(x2, toY(tf.ssA)); ctx.stroke();
+    // SSB line
+    ctx.strokeStyle = '#f06565';
+    ctx.beginPath(); ctx.moveTo(x1, toY(tf.ssB)); ctx.lineTo(x2, toY(tf.ssB)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Tenkan
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x1, toY(tf.tenkan)); ctx.lineTo(x2, toY(tf.tenkan)); ctx.stroke();
+    // Kijun
+    ctx.strokeStyle = '#f5c842';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x1, toY(tf.kijun)); ctx.lineTo(x2, toY(tf.kijun)); ctx.stroke();
+
+    // Price diamond
+    const yP = toY(tf.price);
+    ctx.fillStyle = tf.color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, yP - 6);
+    ctx.lineTo(cx + 5, yP);
+    ctx.lineTo(cx, yP + 6);
+    ctx.lineTo(cx - 5, yP);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 11px Noto Sans KR, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(tf.label, cx, H - pad.b + 14);
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.fillStyle = tf.color;
+    ctx.fillText('$' + tf.price, cx, H - pad.b + 26);
+    ctx.textAlign = 'left';
+  });
+
+  // Legend
+  const leg = [
+    { color:'#c8d4e8', dash:false, label:'현재가' },
+    { color:'#f5c842', dash:false, label:'기준선 Kijun' },
+    { color:'#4a9eff', dash:false, label:'전환선 Tenkan' },
+    { color:'#3ecf8e', dash:true,  label:'SSA (구름 상단)' },
+    { color:'#f06565', dash:true,  label:'SSB (구름 하단)' },
+  ];
+  let lx = pad.l;
+  leg.forEach(l => {
+    ctx.strokeStyle = l.color;
+    ctx.lineWidth = 1.5;
+    if (l.dash) ctx.setLineDash([3,2]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(lx, H - 8); ctx.lineTo(lx + 16, H - 8); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8896a8';
+    ctx.font = '9px IBM Plex Mono, monospace';
+    ctx.fillText(l.label, lx + 20, H - 5);
+    lx += l.label.length * 6 + 36;
+  });
+}
+
+// Init
+updateCalc();
+requestAnimationFrame(() => { drawKumo(); animateRing(0); });
+window.addEventListener('resize', drawKumo);
+</script>
+</body>
+</html>
